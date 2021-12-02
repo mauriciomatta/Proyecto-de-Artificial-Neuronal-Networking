@@ -8,7 +8,7 @@
 from Bio import SeqIO
 
 #Reading a genbank file
-#record = SeqIO.read("C:/Users/diego/Desktop/7BUF_A.fasta" , "fasta" )
+#record = SeqIO.read("C:/Users/Mauricio/Desktop/7BUF_A.fasta" , "fasta" )
 #print (record.id)
 #print (record.description)
 #print (record.name)
@@ -19,7 +19,7 @@ from Bio import SeqIO
 
 
 #reading from FASTA file
-record = SeqIO.read ("C:/Users/diego/Desktop/files/7BUF_A.fasta" , "fasta"  )
+record = SeqIO.read ("C:/Users/Mauricio/Desktop/files/7BUF_A.fasta" , "fasta"  )
 print (record.description)
 print (record.seq)
 
@@ -32,8 +32,8 @@ from Bio import SeqIO
 import os
 #Converting multiple SwissProt files to a single Fasta file
 records = []
-for filename in os.listdir(r"C:\Users\diego\Desktop\files"):
-    handle = open(r"C:/Users/diego/Desktop/files" + "/" + filename)
+for filename in os.listdir(r"C:\Users\Mauricio\Desktop\files"):
+    handle = open(r"C:/Users/Mauricio/Desktop/files" + "/" + filename)
     record = SeqIO.read( handle, "fasta" )
     records.append ( record )
 
@@ -43,7 +43,7 @@ print(len(records))
 # In[31]:
 
 
-SeqIO.write(records, r"C:/Users/diego/Desktop/files_variants.fasta", "fasta" )
+SeqIO.write(records, r"C:/Users/Mauricio/Desktop/files_variants.fasta", "fasta" )
 
 
 # In[33]:
@@ -51,10 +51,10 @@ SeqIO.write(records, r"C:/Users/diego/Desktop/files_variants.fasta", "fasta" )
 
 #Performing a Multiple sequence alignment using ClustalOmega
 from Bio.Align.Applications import ClustalOmegaCommandline
-in_file = "C:/Users/diego/Desktop/files_variants.fasta"
+in_file = "C:/Users/Mauricio/Desktop/files_variants.fasta"
 out_file= "LHBs_variants.aln"
 newtree_file="LHBs_variants.dnd"
-clustalo_exe = r"C:\Users\diego\Desktop\clustal-omega-1.2.2-win64\clustalo.exe"
+clustalo_exe = r"C:\Users\Mauricio\Desktop\clustal-omega-1.2.2-win64\clustalo.exe"
 clustalo_cline = ClustalOmegaCommandline(clustalo_exe, infile=in_file,outfile= out_file, verbose= True, auto=True, outfmt="clustal",guidetree_out=newtree_file,force=True)
 assert os.path.isfile(clustalo_exe), "Clustal O executable missing"
 stdout, stderr = clustalo_cline()
@@ -88,24 +88,6 @@ print(consensus)
 my_pssm = summary_align.pos_specific_score_matrix( consensus , chars_to_ignore=['N'])
 print(my_pssm[0]["M"])
 print(my_pssm)
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
 
 
 # In[14]:
