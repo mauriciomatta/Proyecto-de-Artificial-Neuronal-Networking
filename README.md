@@ -11,4 +11,4 @@ Nota: Como anexo, no solo se desarrolló, los dos sistemas de analisis, verifica
 
 Cuarto; descargar todos los demas archvios en su directorio de su preferencia
 
-Quinto y ulrimo paso; abrir el archivo "Mauricio.py" con el IDLE de python de su preferencia y darle Run
+Quinto y ulrimo paso; abrir el archivo "Mauricio.py" con el IDLE de python de su preferencia y darle Run, la explicación de estos resultados son explicados en el video de la presentación
