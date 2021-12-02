@@ -7,7 +7,7 @@ Segundo; descargar los archivs "Final_Project_1.Rmd" y "Methylation_Analysis_1.R
 
 Tercero; Abrir los archvios y darles Run a todos los chuncs que aparecen, estos precentan una breve descripción de lo que sucede y se contrastará co la información adicional que aparece en el reporte final.
 
-Nota: Como anexo, no solo se desarrolló, los dos sistemas de analisis, verificando la información descrita.También se desarroll+o un excel que atraves de un alineamiento de secuencias permite tambien visualizar inferencias biológicas que complementan a la investigación.
+Nota: Como anexo, no solo se desarrolló, los dos sistemas de analisis, verificando la información descrita.También se desarrolló un archivo en python que a traves de un alineamiento de secuencias permite tambien visualizar inferencias biológicas que complementan a la investigación.
 
 Cuarto; descargar todos los demas archvios en su directorio de su preferencia
 
