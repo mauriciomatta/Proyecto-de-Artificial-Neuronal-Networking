@@ -1,0 +1,475 @@
+---
+title: "Final_Project"
+author: "Mauricio Matta"
+date: "December 1, 2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require("knitr")
+opts_knit$set(root.dir = "C:/Users/Mauricio/Documents/R/win-library")
+```
+
+##1. Install and load GEOquery package onto R.
+
+```{r}
+#To install this package, start R (version "3.6") and enter:
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("GEOquery")
+BiocManager::install("mygene")
+install.packages("dplyr", repos = "http://cran.us.r-project.org")
+BiocManager::install("affy")
+install.packages("tidyr", repos = "http://cran.us.r-project.org")
+BiocManager::install("multtest")
+install.packages("survival", repos = "http://cran.us.r-project.org")
+install.packages("randomForest", repos = "http://cran.us.r-project.org")
+install.packages("caret", repos = "http://cran.us.r-project.org")
+install.packages("pROC", repos = "http://cran.us.r-project.org")
+install.packages("e1071", repos = "http://cran.us.r-project.org")
+install.packages("gplots", repos = "http://cran.us.r-project.org")
+install.packages("ggpubr", repos = "http://cran.us.r-project.org")
+install.packages("factoextra",repos ="https://cran.rstudio.com")
+BiocManager::install("clusterProfiler")
+install.packages("cpm", repos = "http://cran.us.r-project.org")
+BiocManager::install("org.Hs.eg.db")
+
+
+#Libraries
+library(multtest)
+library(dplyr)
+library(affy)
+library(GEOquery)
+library(tidyr)
+library(multtest)
+library(survival)
+library(randomForest)
+library(pROC)
+library(e1071)
+library(factoextra)
+library(gplots)
+library(ggplot2)
+library(ggpubr)
+library(cluster)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(GEOquery)
+library(limma)
+library(cpm)
+```
+
+##2. Download a GSE dataset. In this dataset, the gene expression profiles of conjunctival melanoma and other mucosal melanomas (Formalin-fixed paraffin-embedded) FFPE samples were measured using the NanoString expression analysis platform. This a type of array that measures a custom set of genes in a fast and economic way.
+.
+```{r}
+#https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE143952
+
+gset <- getGEO("GSE62646", GSEMatrix =TRUE, getGPL=FALSE)
+```
+
+##3. Convert from Large List format to Large ExpressionSet. Basically, we will be selecting the matrix with information which is in the first item of the Large List.
+
+```{r}
+summary(gset)
+
+gse=gset[[1]]
+```
+
+##4. Extract the microarray expression values.
+```{r}
+exp=data.frame(exprs(gse))
+rownames(exp)<-c(1:33297)
+exp <- data.frame("ID" =1:33297, exp)
+dim(exp)
+head(exp)
+```
+
+##5. Download the GPL file and convert into table format.Some pre-processing.
+```{r,warning=FALSE}
+options('download.file.method.GEOquery' = 'libcurl')
+gpl=getGEO("GPL6244")
+gpltable=Table(gpl)
+dim(gpltable)
+gpltable[1:5,]
+gpltable <- gpltable[,-c(2:9)]
+gpltable <- gpltable[,-c(3:4)]
+```
+
+
+```{r, warning=FALSE}
+
+
+library(stringr)
+dmax=max(str_count(gpltable$gene_assignment,'//'))
+print(dmax)
+dummy=tidyr::separate(data=gpltable,col="gene_assignment",sep="//", into = c("gene",seq(1:dmax))) #this will give you a warnings, its ok since we want them to be NAs
+gexp=dummy[,-c(2)]
+gexp=gexp[,-c(3:33297)]
+gexp <- gexp %>%
+        dplyr::rename(genes = "1")
+gpltable <- gexp
+gpltable$ID <- c(1:33297)
+```
+
+##6. Name the gene IDs in the exp data frame with their respective gene symbols using the information from the GPL.
+```{r,warning=FALSE}
+gexp=merge(gpltable,exp,by = "ID")
+gexp <- gexp[complete.cases(gexp), ]
+gexp$ID <- c(1:25293)
+```
+
+##7. Let's transpose gexp to enable future analysis.
+```{r,warning=FALSE}
+gexpt=data.frame(t(gexp[,-(1:2)]))
+names(gexpt)=gexp[,2]
+dim(gexpt)
+
+gexpt[,1:2]
+```
+##8. Extract phenotypic information from these samples.
+```{r}
+pheno=pData(gse)
+head(pheno)
+names(pheno)
+#rm(pheno)
+
+
+psamples <- pheno %>%
+dplyr::select(geo_accession, "individual:ch1", "collection of blood samples:ch1", "cardiovascular disease state:ch1")
+pheno <- pheno %>%
+dplyr::rename(number_patient = "individual:ch1",
+sample_time = "collection of blood samples:ch1",
+disease_state = "cardiovascular disease state:ch1")
+
+
+psamples <- psamples[grep("admission", psamples$`collection of blood samples:ch1`),]
+
+#Selecting only cAD and STEMI (admission)
+gexpt <- gexpt[-c(97:98),]
+
+```
+
+
+
+##9. Merge the gene expression file (gexpt) with the patients information (psamples)
+```{r}
+
+final=merge(psamples,gexpt,by=0)
+#names(final)[1]="geo_accession"
+
+final <- final %>%
+dplyr::rename(number_patient = "individual:ch1",
+sample_time = "collection of blood samples:ch1",
+disease_state = "cardiovascular disease state:ch1")
+
+# final <- final %>% 
+#   mutate(sample_time = gsub("(on the 1st day of MI)", "", sample_time, fixed=TRUE),
+#          sample_time = gsub("(after 4-6 days of MI)", "", sample_time, fixed=TRUE),
+#          sample_time = gsub("(6 months after MI)", "", sample_time, fixed=TRUE),
+#          )
+```
+
+##10.Revise the structure of the final dataset in terms of the predictors and responses.
+```{r}
+dim(final)
+str(final[1:28])
+final$'sample_time'=factor(final$'sample_time')
+table(final$'sample_time')
+str(final[1:28])
+```
+
+##11. Let's review some descriptive statistics
+```{r}
+summary(final[,1:10])
+stem(final$` OR4F4 `)
+#histogram
+hist(final$` OR4F4 `)
+```
+
+##12. Let's visualize all of these gene expression profiles in a heatmap.
+```{r}
+# final$disease_state=as.factor(final$disease_state)
+# color <- colorRampPalette(c("red", "black", "green"))(n = 299)
+# c_breaks= c(seq(-7,-1.50001,length=100),seq(-1.5,1.5,length=100),seq(1.50001,7,length=100))
+# 
+# heatmap(t(final[,-c(1:5)]),scale="row",cexRow=1, labRow=names(final[,-c(1:5)]), col= color,ColSideColors = as.character(as.numeric(final[,5])),xlab = 'Samples',ylab="Gene",breaks=c_breaks, Colv = NA)
+# legend("topleft",legend=levels(final$disease_state),title="Time", fill=as.character(rep(1:5)), border=FALSE, bty="n", cex=.8)
+```
+
+```{r}
+#Copy the helper functions in this page here. Otherwise the other lines will not work.
+#I copied them into an R script and called them here
+source('SEfunctions.R')
+```
+
+```{r}
+library(reshape2)
+top=melt(final[,c(5,35,1000,300)])
+
+sumse <- summarySE(top, measurevar="value", groupvars=c("disease_state","variable"))
+sumse
+
+ggplot(sumse, aes(x= disease_state, y=value, fill=disease_state)) + 
+    geom_bar(position=position_dodge(), stat="identity",
+             colour="black", # Use black outlines,
+             size=.3) +      # Thinner lines
+    geom_errorbar(aes(ymin=value-se, ymax=value+se),
+                  size=.3,    # Thinner lines
+                  width=.2,
+                  position=position_dodge(.9)) +
+    ylab("Gene Expression") +
+    scale_fill_hue(name="Disease", # Legend label, use darker colors
+                   breaks=as.character(levels(final$disease_state)),
+                   labels=as.character(levels(final$disease_state))) +
+    ggtitle("Gene Expression of Some Selected Genes") +
+    facet_grid(.~variable)+
+    theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
+
+
+
+ggplot(sumse, aes(x= disease_state, y=value, fill=disease_state)) + 
+    geom_violin() +
+    theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
+```
+
+```{r}
+#SELECTING THE MOST RELEVANT GENES
+
+# Using corr function to generate correlation matrix
+cor(final[,-c(1:5)])
+ 
+# Building correplot to visualize the correlartion matrix
+#library(corrplot)
+#corrplot(cor(final[,-c(1:5)]), method="number", is.corr=FALSE)
+
+
+```
+
+```{r}
+#FEATURE SELECTION METHOD
+
+geo.final <- gexp[,-c(1:2)]
+
+pheno$disease_state = as.factor(pheno$disease_state)
+
+geo.cl=pheno[order(pheno[which(pheno$geo_accession %in% colnames(geo.final)),"geo_accession"],colnames(geo.final)),"disease_state"]
+#geo.cl[] <- as.integer(!is.na(geo.cl))
+
+
+res <- wilcox.test(as.numeric(sample_time) ~ as.factor(disease_state), data = final,
+                   exact = FALSE)
+res
+```
+
+```{r}
+permT=mt.maxT(geo.final, geo.cl, test="wilcoxon")
+```
+
+```{r}
+#mt.reject(cbind(permT$rawp, permT$adjp), seq(0, 0.5, 0.05))$r
+
+reject.01 = mt.reject(cbind(permT$rawp, permT$adjp), seq(0, 0.001, 0.0005))$r
+print(paste("At 0.0005 significance level there are",reject.01[[3,1]],"probes without p-value correction and",reject.01[[3,2]],"with p-value correction"))
+
+reject.25=mt.reject(cbind(permT$rawp, permT$adjp), seq(0, 0.25, 0.001))$r
+print(paste("At 0.001 significance level there are",reject.25[[6,1]],"probes without p-value correction and",reject.25[[6,2]],"with p-value correction"))
+
+```
+
+```{r}
+#Using a p-value of 1e-3
+
+#Get only important probes into a data frame. 
+impprob_index=permT[which(permT$adjp <=0.001),"index"]
+
+#Change orientation of data frame by transposing it using t command. 
+geo.impprobes= data.frame(t(geo.final[impprob_index,]))
+
+#You will notice that probes that had numeric names were added an NA prior to the number when converted to columns. R does not allow columns to be label starting with a number.
+
+#Now let’s merge the expression and phenotypic data. 
+geo.all=merge(geo.impprobes,psamples,by.x=0,by.y="geo_accession")
+
+addition <- psamples[,c(3:4)]
+cbind(geo.all, addition)
+geo.all$`cardiovascular disease state:ch1` = as.factor(geo.all$`cardiovascular disease state:ch1`)
+
+
+print("First 6 row of significant gene probes at the 0.001 with the phenotypic data from patients:")
+head(geo.all)
+
+print("Dimensions of significant gene probes at the 0.001 with the phenotypic data from patients:")
+dim(geo.all)
+
+print("Structure of significant gene probes at the 0.001 with the phenotypic data from patients")
+str(geo.all)
+```
+
+```{r}
+
+geo.all <- geo.all %>%
+dplyr::rename(disease_state = "cardiovascular disease state:ch1",
+              number_patient = "individual:ch1",
+              sample_time = "collection of blood samples:ch1")
+
+rf.fit=randomForest(geo.all$disease_state~.,data=geo.all[,c(2:792)])
+rf.fit
+
+print(paste("The out-of-bag error rate is 0%"))
+print(paste("The error rate for dfs.evt equal to 0 is", rf.fit$confusion[1,3]))
+```
+
+```{r}
+plot.roc(rf.fit$predicted,as.numeric(geo.all$disease_state))
+
+plot.roc(rf.fit$predicted, as.numeric(geo.all$disease_state), 
+    auc.polygon = TRUE, 
+    auc.polygon.col=rgb(.35,0.31,0.61), 
+    auc.polygon.border=rgb(.35,0.31,0.61, 0.25))
+
+
+auc(rf.fit$predicted,as.numeric(geo.all$disease_state))
+
+```
+
+```{r}
+varImpPlot(rf.fit)
+```
+
+```{r}
+most.important<-c("X18183","X17751","X2508","X16939","X17796","X21780")
+# most.important1<-c("SAAL1","TOMM22","SLC19A2","SYNC","ZNF69","TTC24")
+
+index.most.important<-vector()
+for (probe in most.important) {
+  index.most.important<-c(index.most.important,which(names(geo.all) == probe))
+}
+
+print("The top 6 most important probes:")
+most.important
+
+
+```
+
+```{r}
+
+geo.all$disease_state = as.factor(geo.all$disease_state)
+svm.fit=svm(geo.all$disease_state~.,data=geo.all[,c(2:176)])
+#To get the prediction you can type
+svm.fit$fitted
+
+
+```
+
+```{r}
+correct=length(which(svm.fit$fitted==geo.all$disease_state))
+accuracy=correct/length(svm.fit$fitted)
+print(paste("Accuracy:",accuracy))
+# 
+# errorrate=1-accuracy 
+# print(paste("Error Rate:",errorrate))
+# 
+# print("Confusion Matrix:")
+# table(svm.fit$fitted,geo.all$disease_state)
+# 
+# er.0=(table(svm.fit$fitted,geo.all$disease_state)[1,2])/sum(table(svm.fit$fitted,geo.all$disease_state)[1,])
+# 
+# er.1=(table(svm.fit$fitted,geo.all$disease_state)[2,1])/sum(table(svm.fit$fitted,geo.all$disease_state)[2,])
+
+
+```
+
+```{r}
+#Fit a cluster model
+
+kmeans.cluster=kmeans(geo.all[,2:793],5) 
+#The resulting clusters 
+kmeans.predicted=kmeans.cluster$cluster 
+
+table(kmeans.predicted)
+table(geo.all$disease_state)
+table(kmeans.predicted,geo.all$disease_state)
+```
+
+```{r}
+#In order to computing a distance matrix:
+distance <- get_dist(kmeans.predicted)
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+```
+
+```{r}
+#Calculate distance between gene probes using euclidean 
+d=dist(geo.all[,2:175],method = "euclidean") 
+hclustfit=hclust(d)
+plot(hclustfit)
+#Cut the tree to create twenty clusters 
+groups=cutree(hclustfit,k=20) 
+
+table(groups)
+table(geo.all$disease_state)
+table(groups,geo.all$disease_state)
+```
+
+```{r}
+print("Heatmap for the all gene probes without scaling")
+
+#heatmap for the all gene probes without scaling
+heatmap.2(t(geo.all[,2:793]),col=redgreen(75),trace="none",ColSideColors = as.character(as.numeric(geo.all$disease_state)))
+
+print("Heatmap for the all gene probes with scaling")
+#heatmap for all gene probes with scaling 
+heatmap.2(t(geo.all[,2:793]),col=redgreen(75),trace="none",ColSideColors = as.character(as.numeric(geo.all$disease_state)),scale="row")
+```
+
+```{r}
+#heatmap only for the important gene probes without scaling, in my case those gene probes are in columns 2 to 458. Please verify yours using names() command. Similarly, you will need to specify the column numbers for dfs.evt and all the selected gene probes in the data frame, geo.all. In here, it is using the approach to specify such column numbers.
+
+print("Heatmap only for the important gene probes without scaling")
+#heatmap only for the important gene probes without scaling
+heatmap.2(t(geo.all[,index.most.important]),col=redgreen(75),trace="none",ColSideColors = as.character(as.numeric(geo.all$disease_state)))
+
+print("Heatmap only for the important gene probes with scaling")
+#heatmap only for the important gene probes with scaling 
+heatmap.2(t(geo.all[,index.most.important]),col=redgreen(75),trace="none",ColSideColors = as.character(as.numeric(geo.all$disease_state)),scale="row")
+```
+
+
+```{r}
+
+#get the entrezid annotation to be able to work with the enrichment tools
+egids = bitr(most.important1, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+#check for duplicates
+eg=egids[!duplicated(egids[c("ENTREZID")]),]
+
+# BiocManager::install("enrichplot")
+# library(enrichplot)
+
+#enrichment analysis from KEGG
+top.kegg=enrichKEGG(eg$ENTREZID,organism='hsa',pvalueCutoff = 0.2)
+top.kegg.table=as.data.frame(top.kegg)
+dotplot(top.kegg)
+barplot(top.kegg,drop = TRUE, title = "KEGG Pathways",font.size = 8)
+
+#enrichment analysis from Gene Ontology: Biological Process
+top.go.bp=enrichGO(eg$ENTREZID,'org.Hs.eg.db', ont="BP", pvalueCutoff=0.04)
+top.go.table=as.data.frame(top.go.bp)
+goplot(top.go.bp)
+dotplot(top.go.bp)
+barplot(top.go.bp,drop = TRUE, title = "GO Biological Pathways",font.size = 8)
+
+# #enrichment analysis from Gene Ontology: Biological Process
+# top.go.mf=enrichGO(eg$ENTREZID,'org.Hs.eg.db', ont="MF", pvalueCutoff=0.001)
+# goplot(top.go.mf)
+# dotplot(top.go.mf)
+# barplot(top.go.mf,drop = TRUE, title = "GO Molecular Function",font.size = 8)
+# 
+# #enrichment analysis from Gene Ontology: Biological Process
+# top.go.cc=enrichGO(eg$ENTREZID,'org.Hs.eg.db', ont="CC", pvalueCutoff=0.001)
+# goplot(top.go.cc)
+# dotplot(top.go.cc)
+# barplot(top.go.cc,drop = TRUE, title = "GO Celular Location",font.size = 8)
+```
+
