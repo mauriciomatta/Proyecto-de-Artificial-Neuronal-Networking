@@ -1,0 +1,220 @@
+---
+title: "Final_Project"
+author: "Mauricio Matta"
+date: "December 1, 2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require("knitr")
+opts_knit$set(root.dir = "C:/Users/Mauricio/Documents/R/win-library")
+```
+
+##1. Install and load GEOquery package onto R.
+
+```{r}
+#To install this package, start R (version "3.6") and enter:
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# BiocManager::install("GEOquery")
+# install.packages("dplyr")
+# BiocManager::install("affy")
+# install.packages("tidyr", repos = "http://cran.us.r-project.org")
+# BiocManager::install("multtest")
+# install.packages("survival")
+# install.packages("randomForest")
+# install.packages("caret")
+# install.packages("pROC")
+# install.packages("e1071")
+# install.packages("gplots")
+# install.packages("ggpubr")
+# install.packages("factoextra",repos ="https://cran.rstudio.com")
+# BiocManager::install("clusterProfiler")
+# BiocManager::install("minfi")
+# BiocManager::install("AnnotationHub")
+# BiocManager::install("DMRcaller")
+
+# #Libraries
+# library(multtest)
+# library(dplyr)
+# library(affy)
+# library(GEOquery)
+# library(tidyr)
+# library(multtest)
+# library(survival)
+# library(randomForest)
+# library(pROC)
+# library(e1071)
+# library(factoextra)
+# library(gplots)
+# library(ggplot2)
+# library(ggpubr)
+# library(cluster)
+# library(clusterProfiler)
+# library(org.Hs.eg.db)
+# library(GEOquery)
+# library(limma)
+# library(cpm)
+# library(minfi)
+```
+
+##2. Download a GSE dataset. In this dataset, the gene expression profiles of conjunctival melanoma and other mucosal melanomas (Formalin-fixed paraffin-embedded) FFPE samples were measured using the NanoString expression analysis platform. This a type of array that measures a custom set of genes in a fast and economic way.
+.
+```{r}
+#https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE143952
+
+gset <- getGEO("GSE62867", GSEMatrix =TRUE, getGPL=FALSE)
+```
+
+##3. Convert from Large List format to Large ExpressionSet. Basically, we will be selecting the matrix with information which is in the first item of the Large List.
+
+```{r}
+summary(gset)
+
+gse=gset[[1]]
+```
+
+##4. Extract the microarray expression values.
+```{r}
+exp=data.frame(exprs(gse))
+dim(exp)
+head(exp)
+```
+
+##5. Download the GPL file and convert into table format.Some pre-processing.
+```{r,warning=FALSE}
+options('download.file.method.GEOquery' = 'libcurl')
+gpl=getGEO("GPL8490")
+gpltable=Table(gpl)
+dim(gpltable)
+gpltable[1:5,]
+```
+
+
+```{r, warning=FALSE}
+library(ggplot2)
+library(ggrepel)
+## MAKE SURE TO TRANSPOSE THE EXPRESSION MATRIX
+
+sampleInfo <- pData(gse)
+head(sampleInfo)
+
+sampleInfo <- sampleInfo %>%
+dplyr::select(geo_accession, 'sample type:ch1', 'age:ch1', 'characteristics_ch1')
+sampleInfo <- sampleInfo %>%
+dplyr::rename(group = 'sample type:ch1',
+age = 'age:ch1',
+patient = 'characteristics_ch1')
+
+pca <- prcomp(t(exprs(gse)))
+
+
+
+## Join the PCs to the sample information
+cbind(sampleInfo, pca$x) %>% 
+ggplot(aes(x = PC1, y=PC2, col=group,label=paste("", patient))) + geom_point() + geom_text_repel(max.overlaps = Inf)
+
+summary(pca)
+```
+
+
+```{r,warning=FALSE}
+screeplot(pca, type = "l", npcs = 15, main = "Screeplot of the first 10 PCs")
+abline(h = 1, col="red", lty=5)
+legend("topright", legend=c("Eigenvalue = 1"),
+       col=c("red"), lty=5, cex=0.6)
+cumpro <- cumsum(pca$sdev^2 / sum(pca$sdev^2))
+plot(cumpro[0:15], xlab = "PC #", ylab = "Amount of explained variance", main = "Cumulative variance plot")
+abline(v = 6, col="blue", lty=5)
+abline(h = 0.88759, col="blue", lty=5)
+legend("topleft", legend=c("Cut-off @ PC6"),
+       col=c("blue"), lty=5, cex=0.6)
+```
+
+
+```{r,warning=FALSE}
+plot(pca$x[,1],pca$x[,2], xlab="", ylab = "", main = "PC1 / PC2 - plot")
+```
+
+```{r}
+library("factoextra")
+fviz_pca_ind(pca, geom.ind = "point", pointshape = 21, 
+             pointsize = 2, 
+             fill.ind = sampleInfo$group, 
+             col.ind = "black", 
+             palette = "jco", 
+             addEllipses = TRUE,
+             label = "var",
+             col.var = "black",
+             repel = TRUE,
+             legend.title = "Subtraction Region") +
+  ggtitle("2D PCA-plot") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+
+
+```{r}
+library(limma)
+design <- model.matrix(~0+sampleInfo$group)
+design
+## the column names are a bit ugly, so we will rename
+colnames(design) <- c("group1","group2","group3","group4")
+```
+
+
+```{r}
+rownames(sampleInfo) == colnames(exprs(gse))
+fit <- lmFit(exprs(gse), design)
+head(fit$coefficients)
+```
+
+
+```{r}
+contrasts <- makeContrasts(group1 - group2, group2 - group3,group3 - group4,group1 - group4,group2 - group4,group1 - group3,levels=design)
+
+fit2 <- contrasts.fit(fit, contrasts)
+summary(fit2)
+```
+
+```{r}
+fit2 <- eBayes(fit2)
+
+topTable(fit2)
+
+topTable(fit2, coef=1)
+topTable(fit2, coef=2)
+topTable(fit2, coef=3)
+topTable(fit2, coef=4)
+topTable(fit2, coef=5)
+topTable(fit2, coef=6)
+```
+
+```{r}
+decideTests(fit2)
+
+table(decideTests(fit2,p.value = 0.01))
+```
+
+```{r}
+## calculate relative array weights
+aw <- arrayWeights(exprs(gse),design)
+aw
+
+```
+
+```{r}
+fit <- lmFit(exprs(gse), design,
+             weights = aw)
+contrasts <- makeContrasts(group1 - group2, group2 - group3,group3 - group4,group1 - group4,group2 - group4,group1 - group3,levels=design)
+fit2 <- contrasts.fit(fit, contrasts)
+fit2 <- eBayes(fit2)
+summary(fit2)
+```
+
+
