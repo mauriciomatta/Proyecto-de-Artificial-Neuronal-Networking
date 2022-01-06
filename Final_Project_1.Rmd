@@ -11,7 +11,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 require("knitr")
-opts_knit$set(root.dir = "C:/Users/Mauricio/Documents/R/win-library")
+opts_knit$set(root.dir = "D:/Artificial Neuronal Networking/Mauricio/Final/Results")
 ```
 
 ##1. Install and load GEOquery package onto R.
@@ -191,12 +191,12 @@ hist(final$` OR4F4 `)
 
 ##12. Let's visualize all of these gene expression profiles in a heatmap.
 ```{r}
-# final$disease_state=as.factor(final$disease_state)
-# color <- colorRampPalette(c("red", "black", "green"))(n = 299)
-# c_breaks= c(seq(-7,-1.50001,length=100),seq(-1.5,1.5,length=100),seq(1.50001,7,length=100))
-# 
-# heatmap(t(final[,-c(1:5)]),scale="row",cexRow=1, labRow=names(final[,-c(1:5)]), col= color,ColSideColors = as.character(as.numeric(final[,5])),xlab = 'Samples',ylab="Gene",breaks=c_breaks, Colv = NA)
-# legend("topleft",legend=levels(final$disease_state),title="Time", fill=as.character(rep(1:5)), border=FALSE, bty="n", cex=.8)
+final$disease_state=as.factor(final$disease_state)
+color <- colorRampPalette(c("red", "black", "green"))(n = 299)
+c_breaks= c(seq(-7,-1.50001,length=100),seq(-1.5,1.5,length=100),seq(1.50001,7,length=100))
+
+heatmap(t(final[,-c(1:5)]),scale="row",cexRow=1, labRow=names(final[,-c(1:5)]), col= color,ColSideColors = as.character(as.numeric(final[,5])),xlab = 'Samples',ylab="Gene",breaks=c_breaks, Colv = NA)
+legend("topleft",legend=levels(final$disease_state),title="Time", fill=as.character(rep(1:5)), border=FALSE, bty="n", cex=.8)
 ```
 
 ```{r}
@@ -271,8 +271,8 @@ permT=mt.maxT(geo.final, geo.cl, test="wilcoxon")
 ```{r}
 #mt.reject(cbind(permT$rawp, permT$adjp), seq(0, 0.5, 0.05))$r
 
-reject.01 = mt.reject(cbind(permT$rawp, permT$adjp), seq(0, 0.001, 0.0005))$r
-print(paste("At 0.0005 significance level there are",reject.01[[3,1]],"probes without p-value correction and",reject.01[[3,2]],"with p-value correction"))
+reject.001 = mt.reject(cbind(permT$rawp, permT$adjp), seq(0, 0.001, 0.0005))$r
+print(paste("At 0.0005 significance level there are",reject.001[[3,1]],"probes without p-value correction and",reject.001[[3,2]],"with p-value correction"))
 
 reject.25=mt.reject(cbind(permT$rawp, permT$adjp), seq(0, 0.25, 0.001))$r
 print(paste("At 0.001 significance level there are",reject.25[[6,1]],"probes without p-value correction and",reject.25[[6,2]],"with p-value correction"))
@@ -340,8 +340,8 @@ varImpPlot(rf.fit)
 ```
 
 ```{r}
-most.important<-c("X18183","X17751","X2508","X16939","X17796","X21780")
-# most.important1<-c("SAAL1","TOMM22","SLC19A2","SYNC","ZNF69","TTC24")
+most.important<-c("X10288","X6079","X17917","X16147","X22030","X22890")
+most.important1<-c("RNY4P13","BBS10","RNU1-49P","CCRL2","IKBKB","RBPJ")
 
 index.most.important<-vector()
 for (probe in most.important) {
@@ -440,7 +440,7 @@ heatmap.2(t(geo.all[,index.most.important]),col=redgreen(75),trace="none",ColSid
 ```{r}
 
 #get the entrezid annotation to be able to work with the enrichment tools
-egids = bitr(most.important1, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+egids = bitr(most.important1, fromType ="SYMBOL", toType ="ENTREZID", OrgDb="org.Hs.eg.db")
 #check for duplicates
 eg=egids[!duplicated(egids[c("ENTREZID")]),]
 
