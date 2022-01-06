@@ -1,5 +1,5 @@
 # Proyecto-de-Artificial-Neuronal-Networking
-Demo y archivos necesarios para compilar el código en R del proyecto, y material suplementario:
+Demo y archivos necesarios para compilar el código en R del proyecto, y material complementario:
 
 Primero; es necesario tener descargado el programa R (R, Rstudio y Rtools). Los programas de R se pueden obtener del enlace:https://cran.r-project.org/ para la versión de sistema operativo que tenga.
 
