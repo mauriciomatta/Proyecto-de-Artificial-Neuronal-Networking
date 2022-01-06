@@ -1,11 +1,11 @@
 # Proyecto-de-Artificial-Neuronal-Networking
-Demo y archivos necesarios para compilar el código en R de las dos primeras fases del proyecto, y en Python para la tercera fase
+Demo y archivos necesarios para compilar el código en R del proyecto, y material suplementario:
 
-Primero; es necesario tener descargado los programas R (R, Rstudio y Rtools). Los programas de R se pueden obtener del enlace:https://cran.r-project.org/ para la versión de sistema operativo que tenga.
+Primero; es necesario tener descargado el programa R (R, Rstudio y Rtools). Los programas de R se pueden obtener del enlace:https://cran.r-project.org/ para la versión de sistema operativo que tenga.
 
 Segundo; descargar el archivo "Final_Project_1.Rmd"
 
-Tercero; rear un directorio o dejarlo por default, abrir el archivo y cambiar la dirección de la carpeta de resultados que aparece en el primer "chunk"
+Tercero; crear un directorio o dejarlo por default, mover el archivo a este directorio, abrir el archivo y cambiar la dirección de la carpeta de resultados que aparece en el primer "chunk" por el de su preferencia (dentro del directorio de trabajo)
 
 Cuarto; descargar el archivo "SEfunctions.R" en el directorio en el que se trabajará; de desconocer el directorio de trabajo, escribir en la consola de R "getwd()" y aparecerá. 
 
