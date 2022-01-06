@@ -7,7 +7,7 @@ Segundo; descargar el archivo "Final_Project_1.Rmd"
 
 Tercero; rear un directorio o dejarlo por default, abrir el archivo y cambiar la dirección de la carpeta de resultados que aparece en el primer "chunk"
 
-Cuarto; descargar el archivo "Source.R" en el directorio en el que se trabajará; de desconocer el directorio de trabajo, escribir en la consola de R "getwd()" y aparecerá. 
+Cuarto; descargar el archivo "SEfunctions.R" en el directorio en el que se trabajará; de desconocer el directorio de trabajo, escribir en la consola de R "getwd()" y aparecerá. 
 
 Quinto; Correr el código; presionando "Run" (play) a todos los "chunks" del markdown que aparecen, estos precentan una breve descripción de lo que sucede y se contrastará con la información adicional que aparece en el reporte final.
 
